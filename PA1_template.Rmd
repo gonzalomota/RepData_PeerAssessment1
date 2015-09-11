@@ -9,6 +9,7 @@ output:
 
 
 ```{r loadingLibs, results='hide', message=F, warning=F}
+library(plyr)
 library(lubridate)
 library(dplyr)
 
@@ -16,13 +17,11 @@ library(dplyr)
 
 ```{r loadingData}
 unzip ("activity.zip", exdir = "./")
-activity <- read.csv("activity.csv", sep=",", stringsAsFactors = FALSE, quote="", dec=".", numerals = "no.loss", header=FALSE, col.names=c("steps","date", "interval"))
+activity <- read.csv("activity.csv", sep=",", stringsAsFactors = FALSE, quote="", dec=".", numerals = "no.loss", header=FALSE, col.names=c("steps","date", "interval"),blank.lines.skip=TRUE,skip=1)
 activityDf <- tbl_df(activity)
 rm(activity)
 activityDf$steps <- as.numeric(as.character(activityDf$steps))
 activityDf$interval <- as.numeric(as.character(activityDf$interval))
-summary (activityDf)
-
 ```
 
 
@@ -30,16 +29,32 @@ summary (activityDf)
 ```{r meanSteps}
 hist(activityDf$steps)
 mean(activityDf$steps, na.rm=TRUE)
+median(activityDf$steps, na.rm=TRUE)
 
 ```
 
 
 ## What is the average daily activity pattern?
+```{r averageDailyPattern}
+dailyAct <- activityDf %>% group_by(interval) %>% summarise(mean(steps, na.rm=TRUE))
+dailyAct <- plyr::rename(dailyAct, c("mean(steps, na.rm = TRUE)"= "meanSteps"))
+plot(dailyAct$interval, dailyAct$meanSteps, ylab = "", xlab="",type="l")
+dailyActOrdered <- arrange(dailyAct,desc(meanSteps))
+dailyActOrdered[1,1]
 
+```
 
 
 ## Imputing missing values
+```{r imputtingValues}
+medianDf <-activityDf %>% group_by(interval) %>% summarise(median(steps, na.rm=TRUE))
+medianDf <- plyr::rename(medianDf, c("median(steps, na.rm = TRUE)"= "medianSteps"))
+medianDf <- inner_join(medianDf,activityDf, by='interval')
+medianDf$steps[is.na(medianDf$steps)] <- medianDf$medianSteps[is.na(medianDf$steps)]
+completeActivityDf <- select(medianDf, -medianSteps)
+hist(completeActivityDf$steps)
+mean(completeActivityDf$steps, na.rm=TRUE)
+median(completeActivityDf$steps, na.rm=TRUE)
 
-
-
+```
 ## Are there differences in activity patterns between weekdays and weekends?
